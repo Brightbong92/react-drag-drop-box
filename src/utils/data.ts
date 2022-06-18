@@ -1,7 +1,7 @@
 export const ROOM_DATA = [
   {
     id: 1,
-    roomName: '1번방',
+    roomName: '1팀',
     room: [
       { tId: 0, uId: '', userName: '' },
       { tId: 0, uId: '', userName: '' },
@@ -17,7 +17,7 @@ export const ROOM_DATA = [
   },
   {
     id: 2,
-    roomName: '2번방',
+    roomName: '2팀',
     room: [
       { tId: 0, uId: '', userName: '' },
       { tId: 0, uId: '', userName: '' },

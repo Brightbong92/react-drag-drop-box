@@ -7,17 +7,18 @@ const HomePage = () => {
   const [userData, setUserData] = useState(USER_DATA);
 
   /*
-    nowDragingIndex // 내가 현재 드래그 중인 방의 index
-    roomNumber // 내가 이동하려는 방의 index
+    nowDragingIndex // 현재 드래그 중인 방의 index
+    roomNumber // 이동하려는 방의 index
+    beforeNowDragingIndex, // 드래그 한거 인덱스
    */
 
   const switchingRoomData = (
     type: 'room' | 'user',
     uId: string,
-    tId: number,
+    tId: number, // 이동하려는 팀번호
     roomNumber: number,
     userName: string,
-    beforeTeamId: number,
+    beforeTeamId: number, // 이동하기전 팀번호
   ) => {
     const copyRoomData = Array.from(roomData);
     const copyUserData = Array.from(userData);
@@ -30,34 +31,19 @@ const HomePage = () => {
 
       const filteredUserData = copyUserData.filter((v) => v.id !== uId);
       setUserData(filteredUserData);
-      console.log(copyRoomData);
       setRoomData(copyRoomData);
     } else if (type === 'room') {
       let nowDragingIndex = copyRoomData[tId - 1]?.room.findIndex((v) => v.uId === uId);
 
       if (copyRoomData[tId - 1].room[roomNumber].uId !== '') {
         // 방에 데이터가 존재한다면 서로 스위칭
-
         if (beforeTeamId === tId) {
           const temp = copyRoomData[tId - 1].room[roomNumber];
           copyRoomData[tId - 1].room[nowDragingIndex] = temp;
           copyRoomData[tId - 1].room[roomNumber] = { tId: tId - 0, uId, userName };
-          console.log(copyRoomData);
           setRoomData(copyRoomData);
         } else {
-          const beforeNowDragingIndex = copyRoomData[beforeTeamId - 1]?.room.findIndex(
-            (v) => v.uId === uId,
-          );
-          // console.log(
-          //   'roomNumber',
-          //   roomNumber, // 드롭되는 인덱스
-          //   'tId',
-          //   tId, // 들어가야하는 방번호
-          //   'beforeTId',
-          //   beforeTeamId, // 들어가기전 방번호
-          //   'beforeNowDragingIndex',
-          //   beforeNowDragingIndex, // 드래그 한거 인덱스
-          // );
+          const beforeNowDragingIndex = copyRoomData[beforeTeamId - 1]?.room.findIndex((v) => v.uId === uId);
           const temp = copyRoomData[tId - 1].room[roomNumber];
           temp.tId = beforeTeamId - 0;
           copyRoomData[beforeTeamId - 1].room[beforeNowDragingIndex] = temp;
@@ -81,6 +67,7 @@ const HomePage = () => {
           // 다른방으로 이동 할 경우
           nowDragingIndex = copyRoomData[beforeTeamId - 1]?.room.findIndex((v) => v.uId === uId);
           if (nowDragingIndex === -1) return;
+
           copyRoomData[beforeTeamId - 1]?.room?.splice(nowDragingIndex, 1, {
             tId: 0,
             uId: '',
@@ -99,12 +86,13 @@ const HomePage = () => {
     event.dataTransfer.setData('userId', event.target.dataset.userId);
   };
 
-  const onDragStartRoom = (event: any, uId: string, userName: string, tId: number) => {
+  const onDragStartRoom = (event: any, uId: string, userName: string, tId: number, roomIndex: number) => {
     if (uId && userName) {
       event.dataTransfer.setData('type', event.target.dataset.type);
       event.dataTransfer.setData('userName', userName);
       event.dataTransfer.setData('userId', uId);
       event.dataTransfer.setData('beforeTeamId', tId);
+      event.dataTransfer.setData('roomIndex', roomIndex);
     }
   };
 
@@ -115,17 +103,28 @@ const HomePage = () => {
     const beforeTeamId = event.dataTransfer.getData('beforeTeamId');
 
     const { teamId, roomIndex } = event.target.dataset;
-
     switchingRoomData(type, userId, teamId, roomIndex, userName, beforeTeamId);
   };
 
+  const switchingUserData = (userName: string, uId: string, beforeTId: number, roomNumber: number) => {
+    const copyRoomData = Array.from(roomData);
+    const copyUserData = Array.from(userData);
+
+    copyRoomData[beforeTId - 1].room.splice(roomNumber, 1, { tId: 0, uId: '', userName: '' });
+    copyUserData.push({ id: uId, name: userName });
+
+    setRoomData(copyRoomData);
+    setUserData(copyUserData);
+  };
+
   const onDropUserBox = (event: any) => {
-    const type = event.dataTransfer.getData('type');
     const userName = event.dataTransfer.getData('userName');
     const userId = event.dataTransfer.getData('userId');
     const beforeTeamId = event.dataTransfer.getData('beforeTeamId');
+    const roomIndex = event.dataTransfer.getData('roomIndex');
 
-    console.log(type, userName, userId, beforeTeamId);
+    // user를 드래그할때는 roomIndex가 없기에 아래 함수 호출이 안되게됨
+    if (roomIndex) switchingUserData(userName, userId, beforeTeamId, roomIndex);
   };
 
   const onDragOver = (event: any) => {
@@ -143,7 +142,7 @@ const HomePage = () => {
                 <RoomItem
                   key={index.toString()}
                   onDrop={onDropRoom}
-                  onDragStart={(e) => onDragStartRoom(e, uId, userName, tId)}
+                  onDragStart={(e) => onDragStartRoom(e, uId, userName, tId, index)}
                   onDragOver={onDragOver}
                   draggable
                   data-type="room"
@@ -158,7 +157,7 @@ const HomePage = () => {
         ))}
       </VStack>
 
-      <UserBox onDrop={onDropUserBox}>
+      <UserBox onDrop={onDropUserBox} onDragOver={onDragOver}>
         {userData.map(({ id, name }) => (
           <UserText
             key={id}
